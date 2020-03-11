@@ -1,0 +1,14 @@
+{
+  "name": "pomodoro_ui",
+  "version": "1.0.0",
+  "description": "Pummarole UI",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "easytimer.js": "^4.1.1"
+  }
+}
