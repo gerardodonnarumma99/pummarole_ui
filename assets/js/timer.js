@@ -4,6 +4,7 @@ class Tomato{
     constructor()
     {
         this.tomatoTimer=document.getElementById('tomatoTimer');
+        this.pauseTimer=document.getElementById('pauseTimer');
         this.play=document.getElementById('play');
         this.pauseTimer=document.getElementById('pauseTimer');
         this.playPause=document.getElementById('playPause');
@@ -14,11 +15,14 @@ class Tomato{
 
     initListeners()
     {
-        this.playTimer=this.playTimer.bind(this);
-        this.play.addEventListener('click',this.playTimer);
+        this.playTimerTomato=this.playTimerTomato.bind(this);
+        this.play.addEventListener('click',this.playTimerTomato);
+
+        this.playTimerPause=this.playTimerPause.bind(this);
+        this.playPause.addEventListener('click',this.playTimerPause);
     }
 
-    startTime(time,min,sec)
+    startTime(idElement,time,min,sec)
     {
         this.seconds=sec;
         this.minutes=min;
@@ -31,10 +35,15 @@ class Tomato{
             }
             if(this.minutes==time)
             {
-                this.tomatoTimer.innerHTML='00:00';
+                idElement.innerHTML='00:00';
+                if(this.play.hasAttribute("disabled"))
+                    this.play.removeAttribute("disabled");
+                else if(this.playPause.hasAttribute("disabled"))
+                    this.playPause.removeAttribute("disabled");
                 clearInterval(interval);
+                return;
             }
-            this.tomatoTimer.innerHTML=this.minutes+":"+this.seconds;
+            idElement.innerHTML=this.minutes+":"+this.seconds;
             this.seconds++;
         }, 1000);
     }
@@ -51,22 +60,22 @@ class Tomato{
                 {
                     let startDate=moment(t.start_date);
                     let now=moment(Date.now());
-                    //let diffDate=moment(Date.now()).diff(moment(t.start_date),'minutes');
-                    let diffDate=moment(t.start_date).diff(moment(new Date()),'minutes')
-                    //console.log(diffDate);
-                    if(diffDate>25)
+                    let diffDate=moment(new Date()).diff(moment(t.start_date),'minutes')
+                    if(diffDate>t.duration)
                     {
-                        console.log("Qui");
-                        //Prendo la data di inizio e aggiungo 25
-                        let datePlus=moment(new Date).add(25,'minutes').format();
+                        //Prendo la data di inizio e aggiungo la durata
+                        let datePlus=moment(new Date).add(t.duration,'minutes').format();
                         //Chiamata PUT
-                        this.putTimer(t.id,t.userId,t.start_date,t.end_date,"done",t.timer_type);
+                        this.putTimer(t.id,t.user_id,t.start_date,datePlus,"done",t.timer_type);
                     }
-                    else if(diffDate<25)
+                    else if(diffDate<t.duration)
                     {
                         let diffStart=moment(Date.now()).diff(moment(t.start_date));
                         let start=new Date(diffStart);
-                        this.startTime(25,start.getMinutes(),start.getSeconds());
+                        if(t.duration==25)
+                            this.startTime(this.tomatoTimer,t.duration,start.getMinutes(),start.getSeconds());
+                        else if(t.duration==5)
+                            this.startTime(this.pauseTimer,t.duration,start.getMinutes(),start.getSeconds());
                     }
                 }
             }
@@ -77,8 +86,14 @@ class Tomato{
         }
     }
 
-    async playTimer()
+    /**
+     * Avvia un tomato di 25 min
+     */
+    async playTimerTomato()
     {
+        if(this.play.hasAttribute("disabled"))
+            this.play.removeAttribute("disabled");
+        this.playPause.setAttribute("disabled","");
         try{
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
@@ -90,7 +105,33 @@ class Tomato{
           });
           if(result.status===200)
           {
-            this.startTime(25,0,0);
+            this.startTime(this.tomatoTimer,25,0,0);
+          }
+        }catch(err){
+            console.log(err);
+        }
+    }
+
+    /**
+     * Avvia una pausa di 5 min
+     */
+    async playTimerPause()
+    {
+        if(this.playPause.hasAttribute("disabled"))
+            this.playPause.removeAttribute("disabled");
+        this.play.setAttribute("disabled","");
+        try{
+            //Richiesta post
+            const result=await axios.post(TOMATOS_API+'/timer', {
+            "user_id":1,
+            "start_date":moment(Date.now()).format(),
+            "end_date":"",
+            "status":"doing",
+            "timer_type":2
+          });
+          if(result.status===200)
+          {
+            this.startTime(this.pauseTimer,5,0,0);
           }
         }catch(err){
             console.log(err);
@@ -101,7 +142,7 @@ class Tomato{
     {
         try{
             //Richiesta post
-            const result=await axios.post(TOMATOS_API+'/timer/'+id, {
+            const result=await axios.put(TOMATOS_API+'/timer/'+id, {
             "user_id":userId,
             "start_date":startDate,
             "end_date":endDate,
