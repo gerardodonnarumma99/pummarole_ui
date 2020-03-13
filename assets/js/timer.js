@@ -59,18 +59,18 @@ class Tomato{
                 if(t.end_date==null)
                 {
                     let startDate=moment(t.start_date);
-                    let now=moment(Date.now());
-                    let diffDate=moment(new Date()).diff(moment(t.start_date),'minutes')
+                    let now=moment();
+                    let diffDate=now.diff(startDate,'minutes');
                     if(diffDate>t.duration)
                     {
                         //Prendo la data di inizio e aggiungo la durata
-                        let datePlus=moment(new Date).add(t.duration,'minutes').format();
+                        let datePlus=now.add(t.duration,'minutes').format();
                         //Chiamata PUT
                         this.putTimer(t.id,t.user_id,t.start_date,datePlus,"done",t.timer_type);
                     }
                     else if(diffDate<t.duration)
                     {
-                        let diffStart=moment(Date.now()).diff(moment(t.start_date));
+                        let diffStart=now.diff(startDate);
                         let start=new Date(diffStart);
                         if(t.duration==25)
                             this.startTime(this.tomatoTimer,t.duration,start.getMinutes(),start.getSeconds());
