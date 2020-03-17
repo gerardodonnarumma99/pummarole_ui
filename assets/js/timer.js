@@ -1,54 +1,102 @@
-const TOMATOS_API = 'http://127.0.0.1:8000/api/v1'
+const TOMATOS_API = 'http://127.0.0.1:8000/api/v1';
+const TOMATO_TYPE=1;
+const PAUSE_TYPE=2;
 
 class Tomato{
     constructor()
     {
         this.tomatoTimer=document.getElementById('tomatoTimer');
         this.pauseTimer=document.getElementById('pauseTimer');
-        this.play=document.getElementById('play');
-        this.pauseTimer=document.getElementById('pauseTimer');
+        this.playTomato=document.getElementById('playTomato');
         this.playPause=document.getElementById('playPause');
+        this.brokenTomato=document.getElementById('brokenTomato');
+        this.brokenPause=document.getElementById('brokenPause');
+        this.selectPause=document.getElementById('selectPause');
+        this.selectTomato=document.getElementById('selectTomato');
+
+        //Timer
+        this.timerT=new easytimer.Timer();
+        this.timerP=new easytimer.Timer();
+
+        this.soundTerminated=createjs.Sound.registerSound({
+            src:"/assets/sounds/terminated.mp3",
+            id:"terminated"
+        });
+
 
         this.initListeners();
-        this.loadTimer();
+        this.loadTimer(false);
+        this.loadTimerType();
     }
 
     initListeners()
     {
-        this.playTimerTomato=this.playTimerTomato.bind(this);
-        this.play.addEventListener('click',this.playTimerTomato);
+        //Play tomato
+        this.playTomato.addEventListener('click',(e) => {
+            this.playTimerTomato(this.selectTomato.value);
+        });
 
-        this.playTimerPause=this.playTimerPause.bind(this);
-        this.playPause.addEventListener('click',this.playTimerPause);
+        //Broken tomato
+        this.brokenTomato.addEventListener('click',(e) =>{
+            this.timerT.stop();
+
+            $(this.tomatoTimer).html("00:00:00");
+            this.loadTimer(true);
+        });
+
+        //Play pause
+        this.playPause.addEventListener('click',(e) => {
+            this.playTimerPause(this.selectPause.value);
+        });
+
+        //Broken pause
+        this.brokenPause.addEventListener('click',(e) =>{
+            this.timerP.stop();
+            this.brokenPause.setAttribute("disabled","");
+            $(this.pauseTimer).html("00:00:00");
+            this.loadTimer(true);
+        });
+
+        //Scorre il tempo del Tomato e vede quando termina
+        this.timerT.addEventListener('secondsUpdated', (e) => {
+            $(this.tomatoTimer).html(this.timerT.getTimeValues().toString());
+          });
+        this.timerT.addEventListener('targetAchieved', (e) => {
+            $(this.tomatoTimer.values).html('00:00:00');
+            this.startSound("terminated");
+            this.loadTimer(false);
+          });
+          
+        //Scorre il tempo della Pausa e vede quando termina
+        this.timerP.addEventListener('secondsUpdated', (e) => {
+            $(this.pauseTimer).html(this.timerP.getTimeValues().toString());
+          });
+        this.timerP.addEventListener('targetAchieved', (e) => {
+            $(this.pauseTimer.values).html('00:00:00');
+            this.startSound("terminated");
+            this.loadTimer(false);
+          });
     }
 
-    startTime(idElement,time,min,sec)
+    /**
+     * Inizializza il timer del Tomato
+     * @param {Di quanti secondi è il timer} startSeconds 
+     */
+    startTimerTomato(startSeconds)
     {
-        this.seconds=sec;
-        this.minutes=min;
-
-        let interval=setInterval(()=>{
-            if(this.seconds==59)
-            {
-                this.seconds=0;
-                this.minutes++;
-            }
-            if(this.minutes==time)
-            {
-                idElement.innerHTML='00:00';
-                if(this.play.hasAttribute("disabled"))
-                    this.play.removeAttribute("disabled");
-                else if(this.playPause.hasAttribute("disabled"))
-                    this.playPause.removeAttribute("disabled");
-                clearInterval(interval);
-                return;
-            }
-            idElement.innerHTML=this.minutes+":"+this.seconds;
-            this.seconds++;
-        }, 1000);
+        this.timerT.start({ countdown: true, startValues: { seconds: startSeconds } });
     }
 
-    async loadTimer()
+    /**
+     * Inizializza il timer della Pausa
+     * @param {Di quanti secondi è il timer} startSeconds 
+     */
+    startTimerPause(startSeconds)
+    {
+        this.timerP.start({ countdown: true, startValues: { seconds: startSeconds } });
+    }
+
+    async loadTimer(broken)
     {
         try{
             const result=await axios.get(`${TOMATOS_API}/timer/${1}`);
@@ -56,26 +104,43 @@ class Tomato{
             console.log(tomato);
             for(const t of tomato)
             {
+                this.controllButton(t.timer_type,t.end_date,broken);
+
                 if(t.end_date==null)
                 {
+                    //Calcolo date...
                     let startDate=moment(t.start_date);
                     let now=moment();
                     let diffDate=now.diff(startDate,'minutes');
-                    if(diffDate>t.duration)
+                    if(diffDate>=t.duration||broken)
                     {
+                        if(broken)
+                            status="borken";
+                        status="done";
+                        
                         //Prendo la data di inizio e aggiungo la durata
                         let datePlus=now.add(t.duration,'minutes').format();
                         //Chiamata PUT
-                        this.putTimer(t.id,t.user_id,t.start_date,datePlus,"done",t.timer_type);
+                        this.putTimer(t.id,t.user_id,t.start_date,datePlus,status,t.timer_type);
+
+                        return;
                     }
                     else if(diffDate<t.duration)
                     {
-                        let diffStart=now.diff(startDate);
-                        let start=new Date(diffStart);
-                        if(t.duration==25)
-                            this.startTime(this.tomatoTimer,t.duration,start.getMinutes(),start.getSeconds());
-                        else if(t.duration==5)
-                            this.startTime(this.pauseTimer,t.duration,start.getMinutes(),start.getSeconds());
+                        let diffDateSeconds=(t.duration*60)-now.diff(startDate,'seconds');
+                        console.log(diffDateSeconds);
+                        if(t.timer_type==TOMATO_TYPE)
+                        {
+                            this.brokenTomato.removeAttribute("disabled");
+
+                            this.startTimerTomato(diffDateSeconds);
+                        }
+                        else if(t.timer_type==PAUSE_TYPE)
+                        {
+                            this.brokenPause.removeAttribute("disabled");
+
+                            this.startTimerPause(diffDateSeconds);
+                        }
                     }
                 }
             }
@@ -89,11 +154,9 @@ class Tomato{
     /**
      * Avvia un tomato di 25 min
      */
-    async playTimerTomato()
+    async playTimerTomato(time)
     {
-        if(this.play.hasAttribute("disabled"))
-            this.play.removeAttribute("disabled");
-        this.playPause.setAttribute("disabled","");
+        
         try{
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
@@ -105,7 +168,10 @@ class Tomato{
           });
           if(result.status===200)
           {
-            this.startTime(this.tomatoTimer,25,0,0);
+            this.startTimerTomato(time*60);
+            this.loadTimer(false);
+            //this.startTimer(this.tomatoTimer,120);
+            //this.startTime(this.tomatoTimer,totSeconds);
           }
         }catch(err){
             console.log(err);
@@ -115,11 +181,8 @@ class Tomato{
     /**
      * Avvia una pausa di 5 min
      */
-    async playTimerPause()
+    async playTimerPause(time)
     {
-        if(this.playPause.hasAttribute("disabled"))
-            this.playPause.removeAttribute("disabled");
-        this.play.setAttribute("disabled","");
         try{
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
@@ -131,7 +194,9 @@ class Tomato{
           });
           if(result.status===200)
           {
-            this.startTime(this.pauseTimer,5,0,0);
+            this.startTimerPause(time*60);
+            this.loadTimer(false);
+            //this.startTimer(this.pauseTimer,60);
           }
         }catch(err){
             console.log(err);
@@ -153,6 +218,107 @@ class Tomato{
             console.log(err);
         }
     }
+
+    /**
+     * Controlla i bottoni da abilitare e disabilitare.
+     * Metodo di supporto per loadTimer().
+     * @param {Tipo di timer} timerType 
+     * @param {Data di fine} timerEndDate 
+     * @param {true se è stato attivato un broken, false altrimenti} brokenButton 
+     */
+    controllButton(timerType,timerEndDate,brokenButton)
+    {
+        if(this.timerT.isRunning())
+            {
+                this.playTomato.setAttribute("disabled","");
+                this.playPause.setAttribute("disabled","");
+                this.brokenPause.setAttribute("disabled","");
+                this.brokenTomato.removeAttribute("disabled");
+            }
+            else if(this.timerP.isRunning())
+            {
+                this.playPause.setAttribute("disabled","");
+                this.playTomato.setAttribute("disabled","");
+                this.brokenTomato.setAttribute("disabled","");
+                this.brokenPause.removeAttribute("disabled");
+            }
+            else
+            {
+                if(timerType==TOMATO_TYPE)
+                {
+                    this.playTomato.setAttribute("disabled","");
+                    this.brokenTomato.setAttribute("disabled","");
+                    this.brokenPause.setAttribute("disabled","");
+                    if(timerEndDate==null&&!brokenButton)
+                        this.playPause.setAttribute("disabled","");
+                    else if(timerEndDate==null&&brokenButton)
+                        this.playPause.removeAttribute("disabled");
+                    else
+                        this.playPause.removeAttribute("disabled");
+                }
+                else if(timerType==PAUSE_TYPE)
+                {
+                    this.playPause.setAttribute("disabled","");
+                    this.brokenPause.setAttribute("disabled","");
+                    this.brokenTomato.setAttribute("disabled","");
+                    if(timerEndDate==null&&!brokenButton)
+                        this.playTomato.setAttribute("disabled","");
+                    else if(timerEndDate==null&&brokenButton)
+                        this.playTomato.removeAttribute("disabled");
+                    else
+                        this.playTomato.removeAttribute("disabled");
+                }
+            }
+    }
+
+    /**
+     * Inizializza le select della Pausa e dei Tomato
+     */
+    async loadTimerType()
+    {
+        try{
+            const result=await axios.get(`${TOMATOS_API}/timersTypes`);
+            const type=result.data;
+            console.log(type);
+            let contT=0,contP=0;
+            for(const t of type)
+            {
+                if(t.type=="tomato")
+                {
+                    if(contT==0)
+                        this.selectTomato.innerHTML+='<option value='+t.duration+' selected>'+t.description+'</option>';
+                    else
+                        this.selectTomato.innerHTML+='<option value='+t.duration+'>'+t.description+'</option>';
+                    contT++;
+                }
+                else if(t.type=="pause")
+                {
+                    if(contP==0)
+                    this.selectPause.innerHTML+='<option value='+t.duration+' selected>'+t.description+'</option>';
+                    else
+                        this.selectPause.innerHTML+='<option value='+t.duration+'>'+t.description+'</option>';
+                    contP++;
+                }
+            }
+        }
+        catch(err)
+        {
+            console.log(err);
+        }
+    }
+
+    /**
+     * Avvia il suono solo se caricato 
+     * (Grazie all'evento fileload di Sound.js)
+     */
+    startSound(id)
+    {
+        createjs.Sound.addEventListener("fileload", () => {
+            //Riproduce il suono con un tale id
+            createjs.Sound.play(id);
+        });
+    }
+
 }
 
 export default new Tomato();
