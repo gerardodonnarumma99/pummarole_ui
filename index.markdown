@@ -29,5 +29,21 @@ title: Pummarole
       <button type="button" class="btn btn-danger" id="brokenTomato" >Remove</button>
     </div>
     <div class="col-md-4">
+      <form>
+        <div class="form-group">
+          <label>Task title</label>
+          <input type="text" class="form-control is-valid" id="tomatoTitle" placeholder="Insert a title..." min="3" max="25" required>
+        </div>
+        <div class="invalid-feedback">
+          Il titolo è obbligato e compreso tra i 3 e i 25 caratteri.
+        </div>
+        <div class="form-group">
+          <label>Description</label>
+          <textarea class="form-control rounded-0" id="tomatoDescription" rows="10" placeholder="Insert a description..." max="255" required></textarea>
+          <div class="invalid-feedback">
+          La descrizione è obbligatoria.
+          </div>
+        </div>
+      </form>
     </div>
 </div>

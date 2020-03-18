@@ -13,6 +13,8 @@ class Tomato{
         this.brokenPause=document.getElementById('brokenPause');
         this.selectPause=document.getElementById('selectPause');
         this.selectTomato=document.getElementById('selectTomato');
+        this.tomatoTitle=document.getElementById('tomatoTitle');
+        this.tomatoDescription=document.getElementById('tomatoDescription');
 
         //Timer
         this.timerT=new easytimer.Timer();
@@ -156,7 +158,6 @@ class Tomato{
      */
     async playTimerTomato(time)
     {
-        
         try{
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
@@ -164,7 +165,9 @@ class Tomato{
             "start_date":moment(Date.now()).format(),
             "end_date":"",
             "status":"doing",
-            "timer_type":1
+            "timer_type":1,
+            "title": this.tomatoTitle.value,
+            "description": this.tomatoDescription.value
           });
           if(result.status===200)
           {
@@ -190,7 +193,9 @@ class Tomato{
             "start_date":moment(Date.now()).format(),
             "end_date":"",
             "status":"doing",
-            "timer_type":2
+            "timer_type":2,
+            "title":"",
+            "description":""
           });
           if(result.status===200)
           {
