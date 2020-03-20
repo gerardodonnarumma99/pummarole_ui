@@ -1,6 +1,6 @@
 const TOMATOS_API = 'http://127.0.0.1:8000/api/v1';
-const TOMATO_TYPE=1;
-const PAUSE_TYPE=2;
+const TOMATO_TYPE='tomato';
+const PAUSE_TYPE='pause';
 
 class Tomato{
     constructor()
@@ -65,7 +65,7 @@ class Tomato{
           });
         this.timerT.addEventListener('targetAchieved', (e) => {
             $(this.tomatoTimer.values).html('00:00:00');
-            this.startSound("terminated");
+            //this.startSound("terminated");
             this.loadTimer(false);
           });
           
@@ -106,7 +106,7 @@ class Tomato{
             console.log(tomato);
             for(const t of tomato)
             {
-                this.controllButton(t.timer_type,t.end_date,broken);
+                this.controllButton(t.type,t.end_date,broken);
 
                 if(t.end_date==null)
                 {
@@ -131,13 +131,13 @@ class Tomato{
                     {
                         let diffDateSeconds=(t.duration*60)-now.diff(startDate,'seconds');
                         console.log(diffDateSeconds);
-                        if(t.timer_type==TOMATO_TYPE)
+                        if(t.type==TOMATO_TYPE)
                         {
                             this.brokenTomato.removeAttribute("disabled");
 
                             this.startTimerTomato(diffDateSeconds);
                         }
-                        else if(t.timer_type==PAUSE_TYPE)
+                        else if(t.type==PAUSE_TYPE)
                         {
                             this.brokenPause.removeAttribute("disabled");
 
@@ -158,6 +158,11 @@ class Tomato{
      */
     async playTimerTomato(time)
     {
+        this.tomatoForm=document.getElementById('tomatoForm');
+        if(!this.tomatoForm.checkValidity())
+        {
+            return;
+        }
         try{
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
@@ -165,12 +170,13 @@ class Tomato{
             "start_date":moment(Date.now()).format(),
             "end_date":"",
             "status":"doing",
-            "timer_type":1,
+            "timer_type":$(this.selectTomato).find(':selected').attr('data-id'),
             "title": this.tomatoTitle.value,
             "description": this.tomatoDescription.value
           });
           if(result.status===200)
           {
+
             this.startTimerTomato(time*60);
             this.loadTimer(false);
             //this.startTimer(this.tomatoTimer,120);
@@ -193,7 +199,7 @@ class Tomato{
             "start_date":moment(Date.now()).format(),
             "end_date":"",
             "status":"doing",
-            "timer_type":2,
+            "timer_type":$(this.selectPause).find(':selected').attr('data-id'),
             "title":"",
             "description":""
           });
@@ -219,6 +225,10 @@ class Tomato{
             "status":status,
             "timer_type":timerType
           });
+        if(result.status===200)
+        {
+            this.loadTimer(false);
+        }
         }catch(err){
             console.log(err);
         }
@@ -234,46 +244,46 @@ class Tomato{
     controllButton(timerType,timerEndDate,brokenButton)
     {
         if(this.timerT.isRunning())
+        {
+            this.playTomato.setAttribute("disabled","");
+            this.playPause.setAttribute("disabled","");
+            this.brokenPause.setAttribute("disabled","");
+            this.brokenTomato.removeAttribute("disabled");
+        }
+        else if(this.timerP.isRunning())
+        {
+            this.playPause.setAttribute("disabled","");
+            this.playTomato.setAttribute("disabled","");
+            this.brokenTomato.setAttribute("disabled","");
+            this.brokenPause.removeAttribute("disabled");
+        }
+        else
+        {
+            if(timerType==TOMATO_TYPE)
             {
-                this.playTomato.setAttribute("disabled","");
-                this.playPause.setAttribute("disabled","");
-                this.brokenPause.setAttribute("disabled","");
-                this.brokenTomato.removeAttribute("disabled");
-            }
-            else if(this.timerP.isRunning())
-            {
-                this.playPause.setAttribute("disabled","");
                 this.playTomato.setAttribute("disabled","");
                 this.brokenTomato.setAttribute("disabled","");
-                this.brokenPause.removeAttribute("disabled");
-            }
-            else
-            {
-                if(timerType==TOMATO_TYPE)
-                {
-                    this.playTomato.setAttribute("disabled","");
-                    this.brokenTomato.setAttribute("disabled","");
-                    this.brokenPause.setAttribute("disabled","");
-                    if(timerEndDate==null&&!brokenButton)
-                        this.playPause.setAttribute("disabled","");
-                    else if(timerEndDate==null&&brokenButton)
-                        this.playPause.removeAttribute("disabled");
-                    else
-                        this.playPause.removeAttribute("disabled");
-                }
-                else if(timerType==PAUSE_TYPE)
-                {
+                this.brokenPause.setAttribute("disabled","");
+                if(timerEndDate==null&&!brokenButton)
                     this.playPause.setAttribute("disabled","");
-                    this.brokenPause.setAttribute("disabled","");
-                    this.brokenTomato.setAttribute("disabled","");
-                    if(timerEndDate==null&&!brokenButton)
-                        this.playTomato.setAttribute("disabled","");
-                    else if(timerEndDate==null&&brokenButton)
-                        this.playTomato.removeAttribute("disabled");
-                    else
-                        this.playTomato.removeAttribute("disabled");
-                }
+                else if(timerEndDate==null&&brokenButton)
+                    this.playPause.removeAttribute("disabled");
+                else
+                    this.playPause.removeAttribute("disabled");
             }
+            else if(timerType==PAUSE_TYPE)
+            {
+                this.playPause.setAttribute("disabled","");
+                this.brokenPause.setAttribute("disabled","");
+                this.brokenTomato.setAttribute("disabled","");
+                if(timerEndDate==null&&!brokenButton)
+                    this.playTomato.setAttribute("disabled","");
+                else if(timerEndDate==null&&brokenButton)
+                    this.playTomato.removeAttribute("disabled");
+                else
+                     this.playTomato.removeAttribute("disabled");
+            }
+        }
     }
 
     /**
@@ -291,17 +301,17 @@ class Tomato{
                 if(t.type=="tomato")
                 {
                     if(contT==0)
-                        this.selectTomato.innerHTML+='<option value='+t.duration+' selected>'+t.description+'</option>';
+                        this.selectTomato.innerHTML+='<option value='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
                     else
-                        this.selectTomato.innerHTML+='<option value='+t.duration+'>'+t.description+'</option>';
+                        this.selectTomato.innerHTML+='<option value='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
                     contT++;
                 }
                 else if(t.type=="pause")
                 {
                     if(contP==0)
-                    this.selectPause.innerHTML+='<option value='+t.duration+' selected>'+t.description+'</option>';
+                    this.selectPause.innerHTML+='<option value='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
                     else
-                        this.selectPause.innerHTML+='<option value='+t.duration+'>'+t.description+'</option>';
+                        this.selectPause.innerHTML+='<option value='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
                     contP++;
                 }
             }
@@ -322,6 +332,22 @@ class Tomato{
             //Riproduce il suono con un tale id
             createjs.Sound.play(id);
         });
+    }
+
+    resetForm()
+    {
+        this.tomatoTitle.value="";
+        this.tomatoDescription.value="";
+    }
+
+    changeTomatoForm(type,title,description)
+    {
+        if(type==PAUSE_TYPE&&!this.timerP.isRunning())
+        {
+            console.log("Qui");
+            this.tomatoTitle.value=this.title;
+            this.tomatoDescription.value=this.description;
+        }
     }
 
 }
