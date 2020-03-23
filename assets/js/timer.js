@@ -29,6 +29,7 @@ class Tomato{
         this.initListeners();
         this.loadTimer(false);
         this.loadTimerType();
+        //this.loadLastTomato();
     }
 
     initListeners()
@@ -42,6 +43,7 @@ class Tomato{
         this.brokenTomato.addEventListener('click',(e) =>{
             this.timerT.stop();
 
+            //this.startSound("terminated");
             $(this.tomatoTimer).html("00:00:00");
             this.loadTimer(true);
         });
@@ -107,6 +109,7 @@ class Tomato{
             for(const t of tomato)
             {
                 this.controllButton(t.type,t.end_date,broken);
+                this.changeTomatoForm(t.type);
 
                 if(t.end_date==null)
                 {
@@ -176,7 +179,7 @@ class Tomato{
           });
           if(result.status===200)
           {
-
+            this.resetForm();
             this.startTimerTomato(time*60);
             this.loadTimer(false);
             //this.startTimer(this.tomatoTimer,120);
@@ -328,9 +331,9 @@ class Tomato{
      */
     startSound(id)
     {
-        createjs.Sound.addEventListener("fileload", () => {
+        this.soundTerminated.addEventListener("fileload", () => {
             //Riproduce il suono con un tale id
-            createjs.Sound.play(id);
+            this.soundTerminated.play(id);
         });
     }
 
@@ -340,13 +343,33 @@ class Tomato{
         this.tomatoDescription.value="";
     }
 
-    changeTomatoForm(type,title,description)
+    changeTomatoForm(type)
     {
         if(type==PAUSE_TYPE&&!this.timerP.isRunning())
         {
             console.log("Qui");
-            this.tomatoTitle.value=this.title;
-            this.tomatoDescription.value=this.description;
+            this.loadLastTomato();
+        }
+    }
+
+    /**
+     * Recupera l'ultimo tomato
+     */
+    async loadLastTomato()
+    {
+        try{
+            const result=await axios.get(`${TOMATOS_API}/tomatos/${1}`);
+            const tomato=result.data;
+            console.log(tomato);
+            for(const t of tomato)
+            {
+                this.tomatoTitle.value=t.title;
+                this.tomatoDescription.value=t.description;
+            }
+        }
+        catch(err)
+        {
+            console.log(err);
         }
     }
 
