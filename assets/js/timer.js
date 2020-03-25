@@ -1,378 +1,127 @@
-const TOMATOS_API = 'http://127.0.0.1:8000/api/v1';
-const TOMATO_TYPE='tomato';
-const PAUSE_TYPE='pause';
-
-class Tomato{
-    constructor()
+export default class Timers
+{
+    constructor(id,user_id,start_date,end_date,status,timer_type,type,title,description,duration,firstCycle)
     {
-        this.tomatoTimer=document.getElementById('tomatoTimer');
-        this.pauseTimer=document.getElementById('pauseTimer');
-        this.playTomato=document.getElementById('playTomato');
-        this.playPause=document.getElementById('playPause');
-        this.brokenTomato=document.getElementById('brokenTomato');
-        this.brokenPause=document.getElementById('brokenPause');
-        this.selectPause=document.getElementById('selectPause');
-        this.selectTomato=document.getElementById('selectTomato');
-        this.tomatoTitle=document.getElementById('tomatoTitle');
-        this.tomatoDescription=document.getElementById('tomatoDescription');
-
-        //Timer
-        this.timerT=new easytimer.Timer();
-        this.timerP=new easytimer.Timer();
-
-        this.soundTerminated=createjs.Sound.registerSound({
-            src:"/assets/sounds/terminated.mp3",
-            id:"terminated"
-        });
-
-
-        this.initListeners();
-        this.loadTimer(false);
-        this.loadTimerType();
-        //this.loadLastTomato();
+        this.id=id;
+        this.userId=user_id;
+        this.startDate=start_date;
+        this.endDate=end_date;
+        this.status=status;
+        this.timerType=timer_type;
+        this.type=type;
+        this.duration=duration;
+        this.title=title;
+        this.description=description;
+        this.firstCycle=firstCycle;
     }
 
-    initListeners()
+    getId()
     {
-        //Play tomato
-        this.playTomato.addEventListener('click',(e) => {
-            this.playTimerTomato(this.selectTomato.value);
-        });
-
-        //Broken tomato
-        this.brokenTomato.addEventListener('click',(e) =>{
-            this.timerT.stop();
-
-            //this.startSound("terminated");
-            $(this.tomatoTimer).html("00:00:00");
-            this.loadTimer(true);
-        });
-
-        //Play pause
-        this.playPause.addEventListener('click',(e) => {
-            this.playTimerPause(this.selectPause.value);
-        });
-
-        //Broken pause
-        this.brokenPause.addEventListener('click',(e) =>{
-            this.timerP.stop();
-            this.brokenPause.setAttribute("disabled","");
-            $(this.pauseTimer).html("00:00:00");
-            this.loadTimer(true);
-        });
-
-        //Scorre il tempo del Tomato e vede quando termina
-        this.timerT.addEventListener('secondsUpdated', (e) => {
-            $(this.tomatoTimer).html(this.timerT.getTimeValues().toString());
-          });
-        this.timerT.addEventListener('targetAchieved', (e) => {
-            $(this.tomatoTimer.values).html('00:00:00');
-            //this.startSound("terminated");
-            this.loadTimer(false);
-          });
-          
-        //Scorre il tempo della Pausa e vede quando termina
-        this.timerP.addEventListener('secondsUpdated', (e) => {
-            $(this.pauseTimer).html(this.timerP.getTimeValues().toString());
-          });
-        this.timerP.addEventListener('targetAchieved', (e) => {
-            $(this.pauseTimer.values).html('00:00:00');
-            this.startSound("terminated");
-            this.loadTimer(false);
-          });
+        return this.id;
     }
 
-    /**
-     * Inizializza il timer del Tomato
-     * @param {Di quanti secondi è il timer} startSeconds 
-     */
-    startTimerTomato(startSeconds)
+    getUserId()
     {
-        this.timerT.start({ countdown: true, startValues: { seconds: startSeconds } });
+        return this.userId;
     }
 
-    /**
-     * Inizializza il timer della Pausa
-     * @param {Di quanti secondi è il timer} startSeconds 
-     */
-    startTimerPause(startSeconds)
+    getStartDate()
     {
-        this.timerP.start({ countdown: true, startValues: { seconds: startSeconds } });
+         return this.startDate;
     }
 
-    async loadTimer(broken)
+    getEndDate()
     {
-        try{
-            const result=await axios.get(`${TOMATOS_API}/timer/${1}`);
-            const tomato=result.data;
-            console.log(tomato);
-            for(const t of tomato)
-            {
-                this.controllButton(t.type,t.end_date,broken);
-                this.changeTomatoForm(t.type);
-
-                if(t.end_date==null)
-                {
-                    //Calcolo date...
-                    let startDate=moment(t.start_date);
-                    let now=moment();
-                    let diffDate=now.diff(startDate,'minutes');
-                    if(diffDate>=t.duration||broken)
-                    {
-                        if(broken)
-                            status="borken";
-                        status="done";
-                        
-                        //Prendo la data di inizio e aggiungo la durata
-                        let datePlus=now.add(t.duration,'minutes').format();
-                        //Chiamata PUT
-                        this.putTimer(t.id,t.user_id,t.start_date,datePlus,status,t.timer_type);
-
-                        return;
-                    }
-                    else if(diffDate<t.duration)
-                    {
-                        let diffDateSeconds=(t.duration*60)-now.diff(startDate,'seconds');
-                        console.log(diffDateSeconds);
-                        if(t.type==TOMATO_TYPE)
-                        {
-                            this.brokenTomato.removeAttribute("disabled");
-
-                            this.startTimerTomato(diffDateSeconds);
-                        }
-                        else if(t.type==PAUSE_TYPE)
-                        {
-                            this.brokenPause.removeAttribute("disabled");
-
-                            this.startTimerPause(diffDateSeconds);
-                        }
-                    }
-                }
-            }
-        }
-        catch(err)
-        {
-            console.log(err);
-        }
+        return this.endDate;
     }
 
-    /**
-     * Avvia un tomato di 25 min
-     */
-    async playTimerTomato(time)
+    getStatus()
     {
-        this.tomatoForm=document.getElementById('tomatoForm');
-        if(!this.tomatoForm.checkValidity())
-        {
-            return;
-        }
-        try{
-            //Richiesta post
-            const result=await axios.post(TOMATOS_API+'/timer', {
-            "user_id":1,
-            "start_date":moment(Date.now()).format(),
-            "end_date":"",
-            "status":"doing",
-            "timer_type":$(this.selectTomato).find(':selected').attr('data-id'),
-            "title": this.tomatoTitle.value,
-            "description": this.tomatoDescription.value
-          });
-          if(result.status===200)
-          {
-            this.resetForm();
-            this.startTimerTomato(time*60);
-            this.loadTimer(false);
-            //this.startTimer(this.tomatoTimer,120);
-            //this.startTime(this.tomatoTimer,totSeconds);
-          }
-        }catch(err){
-            console.log(err);
-        }
+        return this.status;
     }
 
-    /**
-     * Avvia una pausa di 5 min
-     */
-    async playTimerPause(time)
+    getTimerType()
     {
-        try{
-            //Richiesta post
-            const result=await axios.post(TOMATOS_API+'/timer', {
-            "user_id":1,
-            "start_date":moment(Date.now()).format(),
-            "end_date":"",
-            "status":"doing",
-            "timer_type":$(this.selectPause).find(':selected').attr('data-id'),
-            "title":"",
-            "description":""
-          });
-          if(result.status===200)
-          {
-            this.startTimerPause(time*60);
-            this.loadTimer(false);
-            //this.startTimer(this.pauseTimer,60);
-          }
-        }catch(err){
-            console.log(err);
-        }
+        return this.timerType;
     }
 
-    async putTimer(id,userId,startDate,endDate,status,timerType)
+    getType()
     {
-        try{
-            //Richiesta post
-            const result=await axios.put(TOMATOS_API+'/timer/'+id, {
-            "user_id":userId,
-            "start_date":startDate,
-            "end_date":endDate,
-            "status":status,
-            "timer_type":timerType
-          });
-        if(result.status===200)
-        {
-            this.loadTimer(false);
-        }
-        }catch(err){
-            console.log(err);
-        }
+        return this.type;
     }
 
-    /**
-     * Controlla i bottoni da abilitare e disabilitare.
-     * Metodo di supporto per loadTimer().
-     * @param {Tipo di timer} timerType 
-     * @param {Data di fine} timerEndDate 
-     * @param {true se è stato attivato un broken, false altrimenti} brokenButton 
-     */
-    controllButton(timerType,timerEndDate,brokenButton)
+    getDuration()
     {
-        if(this.timerT.isRunning())
-        {
-            this.playTomato.setAttribute("disabled","");
-            this.playPause.setAttribute("disabled","");
-            this.brokenPause.setAttribute("disabled","");
-            this.brokenTomato.removeAttribute("disabled");
-        }
-        else if(this.timerP.isRunning())
-        {
-            this.playPause.setAttribute("disabled","");
-            this.playTomato.setAttribute("disabled","");
-            this.brokenTomato.setAttribute("disabled","");
-            this.brokenPause.removeAttribute("disabled");
-        }
-        else
-        {
-            if(timerType==TOMATO_TYPE)
-            {
-                this.playTomato.setAttribute("disabled","");
-                this.brokenTomato.setAttribute("disabled","");
-                this.brokenPause.setAttribute("disabled","");
-                if(timerEndDate==null&&!brokenButton)
-                    this.playPause.setAttribute("disabled","");
-                else if(timerEndDate==null&&brokenButton)
-                    this.playPause.removeAttribute("disabled");
-                else
-                    this.playPause.removeAttribute("disabled");
-            }
-            else if(timerType==PAUSE_TYPE)
-            {
-                this.playPause.setAttribute("disabled","");
-                this.brokenPause.setAttribute("disabled","");
-                this.brokenTomato.setAttribute("disabled","");
-                if(timerEndDate==null&&!brokenButton)
-                    this.playTomato.setAttribute("disabled","");
-                else if(timerEndDate==null&&brokenButton)
-                    this.playTomato.removeAttribute("disabled");
-                else
-                     this.playTomato.removeAttribute("disabled");
-            }
-        }
+        return this.duration;
     }
 
-    /**
-     * Inizializza le select della Pausa e dei Tomato
-     */
-    async loadTimerType()
+    getTitle()
     {
-        try{
-            const result=await axios.get(`${TOMATOS_API}/timersTypes`);
-            const type=result.data;
-            console.log(type);
-            let contT=0,contP=0;
-            for(const t of type)
-            {
-                if(t.type=="tomato")
-                {
-                    if(contT==0)
-                        this.selectTomato.innerHTML+='<option value='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
-                    else
-                        this.selectTomato.innerHTML+='<option value='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
-                    contT++;
-                }
-                else if(t.type=="pause")
-                {
-                    if(contP==0)
-                    this.selectPause.innerHTML+='<option value='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
-                    else
-                        this.selectPause.innerHTML+='<option value='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
-                    contP++;
-                }
-            }
-        }
-        catch(err)
-        {
-            console.log(err);
-        }
+        return this.title;
     }
 
-    /**
-     * Avvia il suono solo se caricato 
-     * (Grazie all'evento fileload di Sound.js)
-     */
-    startSound(id)
+    getDescription()
     {
-        this.soundTerminated.addEventListener("fileload", () => {
-            //Riproduce il suono con un tale id
-            this.soundTerminated.play(id);
-        });
+        return this.description;
     }
 
-    resetForm()
+    getFirstCycle()
     {
-        this.tomatoTitle.value="";
-        this.tomatoDescription.value="";
+        return this.firstCycle;
     }
 
-    changeTomatoForm(type)
+    setFirstCycle(firstCycle)
     {
-        if(type==PAUSE_TYPE&&!this.timerP.isRunning())
-        {
-            console.log("Qui");
-            this.loadLastTomato();
-        }
+        this.firstCycle=firstCycle;
     }
 
-    /**
-     * Recupera l'ultimo tomato
-     */
-    async loadLastTomato()
+    setId(id)
     {
-        try{
-            const result=await axios.get(`${TOMATOS_API}/tomatos/${1}`);
-            const tomato=result.data;
-            console.log(tomato);
-            for(const t of tomato)
-            {
-                this.tomatoTitle.value=t.title;
-                this.tomatoDescription.value=t.description;
-            }
-        }
-        catch(err)
-        {
-            console.log(err);
-        }
+        this.id=id;
     }
 
+    setUserId(userId)
+    {
+        this.userId=userId;
+    }
+
+    setStartDate(startDate)
+    {
+         this.startDate=startDate;
+    }
+
+    setEndDate(endDate)
+    {
+        this.endDate=endDate;
+    }
+
+    setStatus(status)
+    {
+        this.status=status;
+    }
+
+    setTimerType(timerType)
+    {
+        this.timerType=timerType;
+    }
+
+    setType(type)
+    {
+        this.type=type;
+    }
+
+    setDuration(duration)
+    {
+        this.duration=duration;
+    }
+
+    setTitle(title)
+    {
+        this.title=title;
+    }
+
+    setDescription(description)
+    {
+        this.description=description;
+    }
 }
-
-export default new Tomato();
