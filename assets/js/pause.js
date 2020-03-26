@@ -71,17 +71,24 @@ export default class Pause{
 
     async playPause()
     {
+        this.timers.setUserId(1);
+        this.timers.setStartDate(moment(Date.now()).format());
+        this.timers.setEndDate("");
+        this.timers.setStatus("doing");
+        this.timers.setTimerType($(this.select).find(':selected').attr('data-id'));
+        this.timers.setTitle("");
+        this.timers.setDescription("");
         try{
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
-            "user_id":1,
-            "start_date":moment(Date.now()).format(),
-            "end_date":"",
-            "status":"doing",
-            "timer_type":$(this.select).find(':selected').attr('data-id'),
-            "title":"",
-            "description": "",
-            "first_cycle":"no"
+            "user_id":this.timers.getUserId(),
+            "start_date":this.timers.getStartDate(),
+            "end_date":this.timers.getEndDate(),
+            "status":this.timers.getStatus(),
+            "timer_type":this.timers.getTimerType(),
+            "title":this.timers.getTitle(),
+            "description": this.timers.getDescription(),
+            "first_cycle":this.timers.getFirstCycle()
           });
           
           return result;

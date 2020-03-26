@@ -12,6 +12,8 @@ class Main
         this.brokenTomato=document.getElementById('brokenTomato');
         this.playPause=this.playBtn=document.getElementById('playPause');
         this.brokenPause=document.getElementById('brokenPause');
+        this.tomato=new Tomato(null);
+        this.pause=new Pause(null);
 
         this.loadTimers();
     }
@@ -22,10 +24,6 @@ class Main
         window.addEventListener('beforeunload', (event) => {
             event.returnValue = 'Sei sicuro di voler chiudere la pagina? Le modifiche potrebbero non essere apportate.';
           });
-
-      /*  window.addEventListener("load",(e)=>{
-            this.loadTimers();
-        }); */
 
         //Play tomato
         document.getElementById('playTomato').addEventListener('click',(e) => {
@@ -47,6 +45,7 @@ class Main
             this.pause.playPause();
             this.pause.startTimer(60*this.pause.getSelect().value);
             this.controllBtn();
+            this.loadTimers();
         });
 
         //Broken pause
@@ -56,8 +55,9 @@ class Main
 
             this.timers.setEndDate(moment());
             this.timers.setStatus('broken');
-            this.controllBtn();
+           // this.controllBtn();
             this.pause.putPause();
+            this.loadTimers();
         });
 
         //Scorre il tempo della pausa e vede quando termina
@@ -102,13 +102,26 @@ class Main
             //await this.tomato.loadSelect(); //Idem per la pausa
             const result=await axios.get(`${TOMATOS_API}/timer/${1}`);
             const t=result.data;
-            this.timers=await new Timers(t[0].id,t[0].user_id,t[0].start_date,t[0].end_date,t[0].status,t[0].timer_type,t[0].type,t[0].title,t[0].description,t[0].duration,t[0].first_cycle);
-            this.tomato=await new Tomato(this.timers);
-            this.pause=await new Pause(this.timers);
-            const listener=await this.initListener();
-            console.log(t);
-            const load=await this.timerInLoad();
-            const button=await this.controllBtn();
+            if(result.status===200)
+            {
+                this.timers=await new Timers(t[0].id,t[0].user_id,t[0].start_date,t[0].end_date,t[0].status,t[0].timer_type,t[0].type,t[0].title,t[0].description,t[0].duration,t[0].first_cycle);
+                await this.tomato.setTimers(this.timers);
+                await this.pause.setTimers(this.timers);
+                const listener=await this.initListener();
+                await this.timerInLoad();
+                await this.controllBtn();
+                console.log(t);
+               // const load=await this.timerInLoad();
+               // const button=await this.controllBtn();
+            }
+            else if(result.status===204)
+            {
+                console.log("qui")
+                this.timers=new Timers(null,null,null,null,null,null,null,null,null,null);
+                await this.tomato.setTimers(this.timers);
+                await this.pause.setTimers(this.timers);
+                const listener=this.initListener();
+            }
         }
         catch(err)
         {
@@ -118,6 +131,7 @@ class Main
 
     async timerInLoad()
     {
+        console.log(this.timers.getStatus());
         let startDate=moment(this.timers.getStartDate());
         let diffDate=moment().diff(this.timers.getStartDate(),'minutes');
         console.log(diffDate);
@@ -172,6 +186,22 @@ class Main
             this.pause.getBrokenBtn().setAttribute("disabled","");
             this.tomato.getPlayBtn().removeAttribute("disabled");
             this.tomato.getBrokenBtn().setAttribute("disabled","");
+        }
+    }
+
+    async getCycle()
+    {
+        try{
+            const result=await axios.get(`${TOMATOS_API}/pomodoroCycle/${1}`);
+            const date=result.data;
+            for(const d of date)
+            {
+                
+            }
+        }
+        catch(err)
+        {
+            connsole.log(err);
         }
     }
 }

@@ -38,6 +38,12 @@ class Tomato{
 
     initListeners()
     {
+        //Resetta ciclo
+        this.resetCycle.addEventListener('click',(e) => {
+            this.first="yes";
+            this.playTimerTomato(2); //Modificarlo successivamente con 25 min
+        });
+
         //Play tomato
         this.playTomato.addEventListener('click',(e) => {
             this.playTimerTomato(this.selectTomato.value);
@@ -115,12 +121,15 @@ class Tomato{
     {
         try{
             const result=await axios.get(`${TOMATOS_API}/timer/${1}`);
+            await this.loadLastTomato();
+            await this.pomodoroCycle(); //Controllo ciclo di pomo
+            await this.controllButton();
+            await this.loadLastTomato();
             const tomato=result.data;
             console.log(tomato);
             for(const t of tomato)
             {
-                this.controllButton(t.type,t.end_date,broken);
-                this.changeTomatoForm(t.type);
+                this.changeIcon(t.type,t.status);
 
                 if(t.end_date==null)
                 {
@@ -148,15 +157,19 @@ class Tomato{
                         console.log(diffDateSeconds);
                         if(t.type==TOMATO_TYPE)
                         {
-                            this.brokenTomato.removeAttribute("disabled");
+                            //this.brokenTomato.removeAttribute("disabled");
 
                             this.startTimerTomato(diffDateSeconds);
+                            this.brokenTomato.removeAttribute("disabled");
+                            this.controllButton();
                         }
                         else if(t.type==PAUSE_TYPE)
                         {
-                            this.brokenPause.removeAttribute("disabled");
+                            //this.brokenPause.removeAttribute("disabled");
 
                             this.startTimerPause(diffDateSeconds);
+                            this.brokenPause.removeAttribute("disabled");
+                            this.controllButton();
                         }
                     }
                 }
@@ -179,14 +192,6 @@ class Tomato{
             return;
         }
         try{
-            const cycle=await this.pomodoroCycle();
-            if(cycle.pomodoroCycle=='true')
-            {
-                alert("Hai completato un ciclo di pomo!");
-                this.first='yes';
-            }
-            else
-                this.first='no';
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
             "user_id":1,
@@ -200,8 +205,6 @@ class Tomato{
           });
           if(result.status===200)
           {
-            if(this.first='yes')
-                this.first='no';
             this.resetForm();
             this.startTimerTomato(time*60);
             this.loadTimer(false);
@@ -230,12 +233,8 @@ class Tomato{
           });
           if(result.status===200)
           {
-            if(this.first=='yes')
-              this.first='no';
             this.startTimerPause(time*60);
             this.loadTimer(false);
-            console.log("Pausa creata");
-            //this.startTimer(this.pauseTimer,60);
           }
         }catch(err){
             console.log(err);
@@ -275,43 +274,62 @@ class Tomato{
         {
             this.playTomato.setAttribute("disabled","");
             this.playPause.setAttribute("disabled","");
+
             this.brokenPause.setAttribute("disabled","");
             this.brokenTomato.removeAttribute("disabled");
+
+            this.resetCycle.setAttribute("disabled","");
+
+            this.tomatoTitle.setAttribute("disabled","");
+            this.tomatoDescription.setAttribute("disabled","");
+
+            this.resetCycle.setAttribute("disabled","");
+            
+            this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
+            this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
+            this.resetForm();
+
+            this.pomodoroCycle();
         }
         else if(this.timerP.isRunning())
         {
             this.playPause.setAttribute("disabled","");
             this.playTomato.setAttribute("disabled","");
+
             this.brokenTomato.setAttribute("disabled","");
             this.brokenPause.removeAttribute("disabled");
+
+            this.resetCycle.setAttribute("disabled","");
+
+            this.tomatoTitle.setAttribute("disabled","");
+            this.tomatoDescription.setAttribute("disabled","");
+
+            this.resetCycle.setAttribute("disabled","");
+
+            this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
+            this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
+            this.resetForm();
+
+            this.pomodoroCycle();
         }
         else
         {
-            if(timerType==TOMATO_TYPE)
-            {
-                this.playTomato.setAttribute("disabled","");
-                this.brokenTomato.setAttribute("disabled","");
-                this.brokenPause.setAttribute("disabled","");
-                if(timerEndDate==null&&!brokenButton)
-                    this.playPause.setAttribute("disabled","");
-                else if(timerEndDate==null&&brokenButton)
-                    this.playPause.removeAttribute("disabled");
-                else
-                    this.playPause.removeAttribute("disabled");
-            }
-            else if(timerType==PAUSE_TYPE)
-            {
-                this.playPause.setAttribute("disabled","");
-                this.brokenPause.setAttribute("disabled","");
-                this.brokenTomato.setAttribute("disabled","");
-                if(timerEndDate==null&&!brokenButton)
-                    this.playTomato.setAttribute("disabled","");
-                else if(timerEndDate==null&&brokenButton)
-                    this.playTomato.removeAttribute("disabled");
-                else
-                     this.playTomato.removeAttribute("disabled");
-            }
+            this.brokenPause.setAttribute("disabled","");
+            this.brokenTomato.setAttribute("disabled","");
+
+            this.playTomato.removeAttribute("disabled");
+            this.playPause.removeAttribute("disabled");
+
+            this.resetCycle.removeAttribute("disabled");
+
+            this.tomatoTitle.removeAttribute("disabled");
+            this.tomatoDescription.removeAttribute("disabled");
+
+            this.resetCycle.removeAttribute("disabled");
+
+            document.getElementById("nextTimer").innerHTML="";
         }
+       
     }
 
     /**
@@ -321,6 +339,7 @@ class Tomato{
     {
         try{
             const result=await axios.get(`${TOMATOS_API}/timersTypes`);
+            await this.loadLastTomato();
             const type=result.data;
             console.log(type);
             let contT=0,contP=0;
@@ -364,18 +383,18 @@ class Tomato{
 
     resetForm()
     {
+        console.log("Qui");
         this.tomatoTitle.value="";
         this.tomatoDescription.value="";
     }
 
-    changeTomatoForm(type)
+   /* changeTomatoForm(type)
     {
         if(type==PAUSE_TYPE&&!this.timerP.isRunning())
         {
-            console.log("Qui");
             this.loadLastTomato();
         }
-    }
+    } */
 
     /**
      * Recupera l'ultimo tomato
@@ -390,6 +409,8 @@ class Tomato{
             {
                 this.tomatoTitle.value=t.title;
                 this.tomatoDescription.value=t.description;
+                this.tomatoTitle.setAttribute("data-value",t.title);
+                this.tomatoDescription.setAttribute("data-value",t.description);
             }
         }
         catch(err)
@@ -404,13 +425,93 @@ class Tomato{
     async pomodoroCycle()
     {
         try{
-            const result=await axios.get(`${TOMATOS_API}/tomatoCycles/${1}`);
+            const result=await axios.get(`${TOMATOS_API}/pomodoroCycle/${1}`);
             const cycle=result.data;
-            return cycle;
+            console.log(cycle);
+            if(result.status===200)
+            {
+                var arrayCycle=[];
+                var arrayTimer=[];
+                var i=0;
+                for(const c of cycle) //Separo i dati
+                {
+                    if(i==0)
+                        arrayTimer.push(c);
+                    else
+                        arrayCycle.push(c)
+                    i++;
+                }
+                for(const t of arrayTimer) //Dati timer
+                    document.getElementById("nextTimer").innerHTML="Next: "+t.type+" di "+t.duration+" min";
+                
+                for(const c of arrayCycle) //Ciclo completo o no?
+                {
+                    if(c.pomodoroCycle=="true")
+                    {
+                        alert("Complimenti! Hai completato un ciclo.");
+                        this.first="yes";
+                    }
+                    else
+                    {
+                        this.first="no";
+                    }
+                }
+            }
+            else if(result.status===204)
+            {
+                document.getElementById("nextTimer").innerHTML="Next: boooh";
+            }
         }
         catch(err)
         {
             console.log(err);
+        }
+    }
+
+    /**
+     * Recupera gli ultimi 4 timer
+     */
+    async loadLastTomato()
+    {
+        try{
+            const result=await axios.get(`${TOMATOS_API}/lastEvent/${1}`);
+            const tomato=result.data;
+            let table="";
+            for(const t of tomato)
+            {
+                table+="<tr><td>"+moment(t.start_date).format("DD-MM-YY HH:MM:SS")+"</td><td>"+t.duration+"</td><td>"+t.status+"</td><td>"+t.title+"</td><td>"+t.description+"</td></td>";
+            }
+            document.getElementById("tableLastEvent").innerHTML=table;
+        }
+        catch(err)
+        {
+            console.log(err);
+        }
+    }
+
+    changeIcon(type,broken)
+    {
+        let pauseIcon=document.getElementById("iconPause");
+        let tomatoIcon=document.getElementById("iconTomato");
+        if(type==TOMATO_TYPE)
+        {
+            tomatoIcon.setAttribute("hidden","");
+            pauseIcon.removeAttribute("hidden");
+        }
+        else if(type==PAUSE_TYPE)
+        {
+            tomatoIcon.setAttribute("hidden","");
+            pauseIcon.removeAttribute("hidden");
+        }
+        else if(type==PAUSE_TYPE&&broken=='broken')
+        {
+            pause.setAttribute("hidden","");
+            tomato.removeAttribute("hidden");
+        }
+        else if(type==PAUSE_TYPE&&broken=='broken')
+        {
+            tomatoIcon.setAttribute("hidden","");
+            pauseIcon.removeAttribute("hidden");
         }
     }
 

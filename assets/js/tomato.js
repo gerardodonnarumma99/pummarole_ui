@@ -1,6 +1,4 @@
 import Timers from "./timer.js";
-import Main from "./main.js";
-import main from "./main.js";
 
 const TOMATOS_API = 'http://127.0.0.1:8000/api/v1';
 
@@ -113,17 +111,24 @@ export default class Tomato{
 
     async playTomato()
     {
+        this.timers.setUserId(1);
+        this.timers.setStartDate(moment(Date.now()).format());
+        this.timers.setEndDate("");
+        this.timers.setStatus("doing");
+        this.timers.setTimerType($(this.select).find(':selected').attr('data-id'));
+        this.timers.setTitle(this.title.value);
+        this.timers.setDescription(this.description.value);
         try{
             //Richiesta post
             const result=await axios.post(TOMATOS_API+'/timer', {
-            "user_id":1,
-            "start_date":moment(Date.now()).format(),
-            "end_date":"",
-            "status":"doing",
-            "timer_type":$(this.select).find(':selected').attr('data-id'),
-            "title": this.title.value,
-            "description": this.description.value,
-            "first_cycle":"no"
+            "user_id":this.timers.getUserId(),
+            "start_date":this.timers.getStartDate(),
+            "end_date":this.timers.getEndDate(),
+            "status":this.timers.getStatus(),
+            "timer_type":this.timers.getTimerType(),
+            "title":this.timers.getTitle(),
+            "description": this.timers.getDescription(),
+            "first_cycle":this.timers.getFirstCycle()
           });
           
           return result;
