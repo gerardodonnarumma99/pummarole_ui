@@ -77,7 +77,6 @@ class Tomato{
           });
         this.timerT.addEventListener('targetAchieved', (e) => {
             $(this.tomatoTimer.values).html('00:00:00');
-            //this.startSound("terminated");
             this.loadTimer(false);
           });
           
@@ -87,16 +86,8 @@ class Tomato{
           });
         this.timerP.addEventListener('targetAchieved', (e) => {
             $(this.pauseTimer.values).html('00:00:00');
-            this.startSound("terminated");
             this.loadTimer(false);
           });
-
-        //Avvia un nuovo ciclo
-       /* this.resetCycle.addEventListener('click',(e) => {
-            this.first='yes';
-            this.playTimerTomato(SHORT_TOMATO);
-        }); */
-
     }
 
     /**
@@ -123,13 +114,13 @@ class Tomato{
             const result=await axios.get(`${TOMATOS_API}/timer/${1}`);
             await this.loadLastTomato();
             await this.pomodoroCycle(); //Controllo ciclo di pomo
+            await this.nextTimer();
             await this.controllButton();
-            await this.loadLastTomato();
             const tomato=result.data;
             console.log(tomato);
             for(const t of tomato)
             {
-                this.changeIcon(t.type,t.status);
+                this.changeIcon(t.type,t.status); //Controllo icone old
 
                 if(t.end_date==null)
                 {
@@ -285,11 +276,18 @@ class Tomato{
 
             this.resetCycle.setAttribute("disabled","");
             
-            this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
-            this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
+            if(this.tomatoTitle==null||this.tomatoDescription==null)
+            {
+                this.tomatoTitle.setAttribute("placeholder","");
+                this.tomatoDescription.setAttribute("placeholder","");
+            }
+            else
+            {
+                this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
+                this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
+            }
             this.resetForm();
 
-            this.pomodoroCycle();
         }
         else if(this.timerP.isRunning())
         {
@@ -306,11 +304,18 @@ class Tomato{
 
             this.resetCycle.setAttribute("disabled","");
 
-            this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
-            this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
+            if(this.tomatoTitle==null||this.tomatoDescription==null)
+            {
+                this.tomatoTitle.setAttribute("placeholder","");
+                this.tomatoDescription.setAttribute("placeholder","");
+            }
+            else
+            {
+                this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
+                this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
+            }
             this.resetForm();
 
-            this.pomodoroCycle();
         }
         else
         {
@@ -428,38 +433,54 @@ class Tomato{
             const result=await axios.get(`${TOMATOS_API}/pomodoroCycle/${1}`);
             const cycle=result.data;
             console.log(cycle);
+            if(result.status===200&&cycle==true)
+            {
+                alert("Complimenti! Hai completato un ciclo.");
+                this.first="yes";
+            }
+            else
+                this.first="no";
+        }
+        catch(err)
+        {
+            console.log(err);
+        }
+    }
+
+    /**
+     * Controlla e setta next timer
+     */
+    async nextTimer()
+    {
+        let iconTomato=document.getElementById('iconTomato');
+        let iconPause=document.getElementById('iconPause');
+        try{
+            const result=await axios.get(`${TOMATOS_API}/nextTimer/${1}`);
+            const next=result.data;
+            console.log(next);
             if(result.status===200)
             {
-                var arrayCycle=[];
-                var arrayTimer=[];
-                var i=0;
-                for(const c of cycle) //Separo i dati
+                if(this.timerT.isRunning()||this.timerP.isRunning()) //Se è in corso un timer
                 {
-                    if(i==0)
-                        arrayTimer.push(c);
-                    else
-                        arrayCycle.push(c)
-                    i++;
+                    document.getElementById("nextTimer").innerHTML="Next: "+next[0].type+" di "+next[0].duration+" min";
                 }
-                for(const t of arrayTimer) //Dati timer
-                    document.getElementById("nextTimer").innerHTML="Next: "+t.type+" di "+t.duration+" min";
-                
-                for(const c of arrayCycle) //Ciclo completo o no?
+                else if(next[0].type=='tomato') //Avviso icona per l'utente sul prossimo timer da fare
                 {
-                    if(c.pomodoroCycle=="true")
-                    {
-                        alert("Complimenti! Hai completato un ciclo.");
-                        this.first="yes";
-                    }
-                    else
-                    {
-                        this.first="no";
-                    }
+                    iconTomato.removeAttribute('hidden');
+                    iconPause.setAttribute('hidden',"");
+                }
+                else if(next[0].type=='pause')
+                {
+                    iconPause.removeAttribute('hidden');
+                    iconTomato.setAttribute('hidden',"");
                 }
             }
-            else if(result.status===204)
+            else
             {
-                document.getElementById("nextTimer").innerHTML="Next: boooh";
+                document.getElementById("nextTimer").innerHTML="Avvia un ciclo per suggerimenti";
+
+                iconTomato.setAttribute('hidden',"");
+                iconPause.setAttribute('hidden',"");
             }
         }
         catch(err)

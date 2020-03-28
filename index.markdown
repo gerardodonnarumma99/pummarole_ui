@@ -2,7 +2,7 @@
 layout: main
 title: Pummarole
 ---
-<div id="nextTimer" style="position: absolute; margin-left: 1000px" value="">Next:</div>
+<div id="nextTimer" style="position: absolute; margin-left: 1000px" value=""></div>
 <div class="row">
     <div class="col-md-4">
       <h1>Pause</h1>
