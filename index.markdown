@@ -4,6 +4,7 @@ title: Pummarole
 ---
 <div id="nextTimer" style="position: absolute; margin-left: 1000px" value=""></div>
 <div class="row">
+    <button id="suono" hidden>A</button>
     <div class="col-md-4">
       <h1>Pause</h1>
       <div class="input-group mb-3">
@@ -30,6 +31,7 @@ title: Pummarole
     </div>
     <div class="col-md-4">
     <h1>Task Tomato</h1>
+    <div id="taskInLoad" hidden></div>
       <form id="tomatoForm">
         <div class="form-group">
           <label id="taskTitle">Title</label>
@@ -48,6 +50,7 @@ title: Pummarole
       <table class="table">
         <thead>
           <tr>
+            <th scope="col"></th>
             <th scope="col">Start</th>
             <th scope="col">Duration</th>
             <th scope="col">Status</th>

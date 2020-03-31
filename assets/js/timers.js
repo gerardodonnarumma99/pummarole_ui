@@ -24,12 +24,6 @@ class Tomato{
         this.timerT=new easytimer.Timer();
         this.timerP=new easytimer.Timer();
 
-        this.soundTerminated=createjs.Sound.registerSound({
-            src:"/assets/sounds/terminated.mp3",
-            id:"terminated"
-        });
-
-
         this.initListeners();
         this.loadTimer(false);
         this.loadTimerType();
@@ -77,6 +71,7 @@ class Tomato{
           });
         this.timerT.addEventListener('targetAchieved', (e) => {
             $(this.tomatoTimer.values).html('00:00:00');
+            this.notifyMe();
             this.loadTimer(false);
           });
           
@@ -86,6 +81,7 @@ class Tomato{
           });
         this.timerP.addEventListener('targetAchieved', (e) => {
             $(this.pauseTimer.values).html('00:00:00');
+            this.notifyMe();
             this.loadTimer(false);
           });
     }
@@ -112,6 +108,7 @@ class Tomato{
     {
         try{
             const result=await axios.get(`${TOMATOS_API}/timer/${1}`);
+            await this.loadLastForTomatos();
             await this.loadLastTomato();
             await this.pomodoroCycle(); //Controllo ciclo di pomo
             await this.nextTimer();
@@ -120,7 +117,7 @@ class Tomato{
             console.log(tomato);
             for(const t of tomato)
             {
-                this.changeIcon(t.type,t.status); //Controllo icone old
+               // this.changeIcon(t.type,t.status); //Controllo icone old
 
                 if(t.end_date==null)
                 {
@@ -130,6 +127,7 @@ class Tomato{
                     let diffDate=now.diff(startDate,'minutes');
                     if( (diffDate>=t.duration)||(broken))
                     {
+                        
                         if(broken)
                             status="broken";
                         else
@@ -259,7 +257,7 @@ class Tomato{
      * @param {Data di fine} timerEndDate 
      * @param {true se è stato attivato un broken, false altrimenti} brokenButton 
      */
-    controllButton(timerType,timerEndDate,brokenButton)
+    async controllButton(timerType,timerEndDate,brokenButton)
     {
         if(this.timerT.isRunning())
         {
@@ -271,21 +269,13 @@ class Tomato{
 
             this.resetCycle.setAttribute("disabled","");
 
-            this.tomatoTitle.setAttribute("disabled","");
-            this.tomatoDescription.setAttribute("disabled","");
-
             this.resetCycle.setAttribute("disabled","");
             
-            if(this.tomatoTitle==null||this.tomatoDescription==null)
-            {
-                this.tomatoTitle.setAttribute("placeholder","");
-                this.tomatoDescription.setAttribute("placeholder","");
-            }
-            else
-            {
-                this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
-                this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
-            }
+            //Attivo task in corso
+            document.getElementById('tomatoForm').setAttribute("hidden","");
+            document.getElementById('taskInLoad').removeAttribute('hidden');
+            document.getElementById('taskInLoad').innerHTML="In corso...<br>Task title: "+document.getElementById('taskInLoad').getAttribute('data-title')+"<br>Description: "+document.getElementById('taskInLoad').getAttribute('data-description');
+
             this.resetForm();
 
         }
@@ -299,21 +289,13 @@ class Tomato{
 
             this.resetCycle.setAttribute("disabled","");
 
-            this.tomatoTitle.setAttribute("disabled","");
-            this.tomatoDescription.setAttribute("disabled","");
-
             this.resetCycle.setAttribute("disabled","");
 
-            if(this.tomatoTitle==null||this.tomatoDescription==null)
-            {
-                this.tomatoTitle.setAttribute("placeholder","");
-                this.tomatoDescription.setAttribute("placeholder","");
-            }
-            else
-            {
-                this.tomatoTitle.setAttribute("placeholder","In corso..."+this.tomatoTitle.getAttribute("data-value"));
-                this.tomatoDescription.setAttribute("placeholder","In corso..."+this.tomatoDescription.getAttribute("data-value"));
-            }
+            //Attivo task in corso
+            document.getElementById('tomatoForm').setAttribute("hidden","");
+            document.getElementById('taskInLoad').removeAttribute('hidden');
+            document.getElementById('taskInLoad').innerHTML="In corso...<br>Task title: "+document.getElementById('taskInLoad').getAttribute('data-title')+"<br>Description: "+document.getElementById('taskInLoad').getAttribute('data-description');
+
             this.resetForm();
 
         }
@@ -333,6 +315,10 @@ class Tomato{
             this.resetCycle.removeAttribute("disabled");
 
             document.getElementById("nextTimer").innerHTML="";
+
+            //Disattivo task in corso
+            document.getElementById('taskInLoad').setAttribute("hidden","");
+            document.getElementById('tomatoForm').removeAttribute('hidden');
         }
        
     }
@@ -353,17 +339,17 @@ class Tomato{
                 if(t.type=="tomato")
                 {
                     if(contT==0)
-                        this.selectTomato.innerHTML+='<option value='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
+                        this.selectTomato.innerHTML+='<option value='+t.duration+' id='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
                     else
-                        this.selectTomato.innerHTML+='<option value='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
+                        this.selectTomato.innerHTML+='<option value='+t.duration+' id='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
                     contT++;
                 }
                 else if(t.type=="pause")
                 {
                     if(contP==0)
-                    this.selectPause.innerHTML+='<option value='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
+                    this.selectPause.innerHTML+='<option value='+t.duration+' id='+t.duration+' data-id='+t.id+' selected>'+t.description+'</option>';
                     else
-                        this.selectPause.innerHTML+='<option value='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
+                        this.selectPause.innerHTML+='<option value='+t.duration+' id='+t.duration+' data-id='+t.id+'>'+t.description+'</option>';
                     contP++;
                 }
             }
@@ -372,18 +358,6 @@ class Tomato{
         {
             console.log(err);
         }
-    }
-
-    /**
-     * Avvia il suono solo se caricato 
-     * (Grazie all'evento fileload di Sound.js)
-     */
-    startSound(id)
-    {
-        this.soundTerminated.addEventListener("fileload", () => {
-            //Riproduce il suono con un tale id
-            this.soundTerminated.play(id);
-        });
     }
 
     resetForm()
@@ -409,13 +383,13 @@ class Tomato{
         try{
             const result=await axios.get(`${TOMATOS_API}/tomatos/${1}`);
             const tomato=result.data;
-            console.log(tomato);
             for(const t of tomato)
             {
-                this.tomatoTitle.value=t.title;
-                this.tomatoDescription.value=t.description;
-                this.tomatoTitle.setAttribute("data-value",t.title);
-                this.tomatoDescription.setAttribute("data-value",t.description);
+                console.log(t.title);
+                document.getElementById('taskInLoad').setAttribute('data-title',t.title);
+                document.getElementById('taskInLoad').setAttribute('data-description',t.description);
+                this.tomatoTitle.setAttribute("placeholder","Title precedente: "+t.title);
+                this.tomatoDescription.setAttribute("placeholder","Description precedente: "+t.description);
             }
         }
         catch(err)
@@ -456,24 +430,28 @@ class Tomato{
         let iconPause=document.getElementById('iconPause');
         try{
             const result=await axios.get(`${TOMATOS_API}/nextTimer/${1}`);
-            const next=result.data;
+            const next=result.data[0];
             console.log(next);
             if(result.status===200)
             {
                 if(this.timerT.isRunning()||this.timerP.isRunning()) //Se è in corso un timer
                 {
-                    document.getElementById("nextTimer").innerHTML="Next: "+next[0].type+" di "+next[0].duration+" min";
+                    document.getElementById("nextTimer").innerHTML="Next: "+next.type+" di "+next.duration+" min";
                 }
-                else if(next[0].type=='tomato') //Avviso icona per l'utente sul prossimo timer da fare
+                else if(next.type=='tomato') //Avviso icona per l'utente sul prossimo timer da fare
                 {
+                    //Mostro icona
                     iconTomato.removeAttribute('hidden');
                     iconPause.setAttribute('hidden',"");
                 }
-                else if(next[0].type=='pause')
+                else if(next.type=='pause')
                 {
                     iconPause.removeAttribute('hidden');
                     iconTomato.setAttribute('hidden',"");
                 }
+
+                //Seleziono la select giusta a prescindere da tomato o pausa
+                document.getElementById(next.duration).setAttribute('selected',"")
             }
             else
             {
@@ -492,7 +470,7 @@ class Tomato{
     /**
      * Recupera gli ultimi 4 timer
      */
-    async loadLastTomato()
+    async loadLastForTomatos()
     {
         try{
             const result=await axios.get(`${TOMATOS_API}/lastEvent/${1}`);
@@ -500,7 +478,10 @@ class Tomato{
             let table="";
             for(const t of tomato)
             {
-                table+="<tr><td>"+moment(t.start_date).format("DD-MM-YY HH:MM:SS")+"</td><td>"+t.duration+"</td><td>"+t.status+"</td><td>"+t.title+"</td><td>"+t.description+"</td></td>";
+                if(t.type=='tomato')
+                    table+="<tr><td><i class='fas fa-check'></i></td><td>"+moment(t.start_date).format("DD-MM-YY HH:MM:SS")+"</td><td>"+t.duration+"</td><td>"+t.status+"</td><td>"+t.title+"</td><td>"+t.description+"</td></td>";
+                else if(t.type=='pause')
+                    table+="<tr><td><i class='fas fa-pause'></i></td><td>"+moment(t.start_date).format("DD-MM-YY HH:MM:SS")+"</td><td>"+t.duration+"</td><td>"+t.status+"</td><td>"+t.title+"</td><td>"+t.description+"</td></td>";
             }
             document.getElementById("tableLastEvent").innerHTML=table;
         }
@@ -510,7 +491,7 @@ class Tomato{
         }
     }
 
-    changeIcon(type,broken)
+ /*   changeIcon(type,broken)
     {
         let pauseIcon=document.getElementById("iconPause");
         let tomatoIcon=document.getElementById("iconTomato");
@@ -534,7 +515,33 @@ class Tomato{
             tomatoIcon.setAttribute("hidden","");
             pauseIcon.removeAttribute("hidden");
         }
-    }
+    } */
+
+    notifyMe() {
+        // Let's check if the browser supports notifications
+        if (!("Notification" in window)) {
+          alert("Il tuo browser non supporta le notifiche!");
+        }
+      
+        // Let's check whether notification permissions have already been granted
+        else if (Notification.permission === "granted") {
+          // If it's okay let's create a notification
+          var notification = new Notification("Timer terminato!");
+        }
+      
+        // Otherwise, we need to ask the user for permission
+        else if (Notification.permission !== 'denied') {
+          Notification.requestPermission(function (permission) {
+            // If the user accepts, let's create a notification
+            if (permission === "granted") {
+                var notification = new Notification("Timer terminato!");
+            }
+          });
+        }
+      
+        // At last, if the user has denied notifications, and you 
+        // want to be respectful there is no need to bother them any more.
+      }
 
 }
 
